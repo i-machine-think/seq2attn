@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from .attention import Attention
 from .attention import HardGuidance
-from .attentionActivation import AttentionActivation
+from .attention_activation import AttentionActivation
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

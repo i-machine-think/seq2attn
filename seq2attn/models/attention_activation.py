@@ -42,7 +42,6 @@ class AttentionActivation(nn.Module):
                 self.max_temperature = initial_temperature
 
                 self.inverse_temperature_estimator = nn.Linear(query_dim, 1)
-                self.inverse_temperature_activation = self.inverse_temperature_activation
 
         # Initialize sparsemax
         if self.sample_train == 'sparsemax' or self.sample_infer == 'sparsemax':
