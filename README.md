@@ -12,8 +12,8 @@ Install `machine`
 ```
 pip install -e machine
 ```
-Run training script
+Run example script
 ```
 cd seq2attn
-sh train_seq2attn.sh
+sh seq2attn_example.sh
 ```
