@@ -1,0 +1,3 @@
+[submodule "machine"]
+	path = machine
+	url = https://github.com/i-machine-think/machine
