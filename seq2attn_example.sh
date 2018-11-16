@@ -1,5 +1,5 @@
 # DATA
-DATA_PATH="../machine-tasks/LookupTables/lookup-3bit/samples/sample1"
+DATA_PATH="../machine-tasks/LookupTables/data/samples/sample1"
 TRAIN_PATH="${DATA_PATH}/train.tsv"
 VALIDATION_PATH="${DATA_PATH}/validation.tsv"
 TEST1_PATH="${DATA_PATH}/heldout_compositions.tsv"
