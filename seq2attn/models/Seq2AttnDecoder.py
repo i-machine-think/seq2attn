@@ -14,7 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .attention import Attention
-from .attention import HardGuidance
 from .attention_activation import AttentionActivation
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -209,7 +208,7 @@ class Seq2AttnDecoder(nn.Module):
         return valid_action_mask
 
     def forward_decoder(self, embedded, transcoder_hidden, decoder_hidden, attn_keys, attn_vals,
-                        **attention_method_kwargs):
+                        **kwargs):
         """Forward decoder.
 
         Perform forward pass and stochastically select actions using epsilon-greedy RL
@@ -227,7 +226,7 @@ class Seq2AttnDecoder(nn.Module):
         """
         transcoder_output, transcoder_hidden = self.transcoder(embedded, transcoder_hidden)
         context, attn = self.attention(queries=transcoder_output, keys=attn_keys, values=attn_vals,
-                                       **attention_method_kwargs)
+                                       **kwargs)
         decoder_input = torch.cat((context, embedded), dim=2)
 
         if self.full_attention_focus:
@@ -243,7 +242,7 @@ class Seq2AttnDecoder(nn.Module):
         return output, transcoder_hidden, decoder_hidden, attn
 
     def forward_step(self, input_var, transcoder_hidden, decoder_hidden, attn_keys, attn_vals,
-                     function, **attention_method_kwargs):
+                     function, **kwargs):
         """One forward step.
 
         Performs one or multiple forward decoder steps.
@@ -273,7 +272,7 @@ class Seq2AttnDecoder(nn.Module):
             decoder_hidden,
             attn_keys=attn_keys,
             attn_vals=attn_vals,
-            **attention_method_kwargs)
+            **kwargs)
 
         output = return_values[0].contiguous().view(batch_size, -1)
         output = self.out(output)
@@ -287,7 +286,7 @@ class Seq2AttnDecoder(nn.Module):
 
     def forward(self, inputs=None,
                 encoder_embeddings=None, encoder_hidden=None, encoder_outputs=None,
-                function=F.log_softmax, teacher_forcing_ratio=0, provided_attention=None):
+                function=F.log_softmax, teacher_forcing_ratio=0):
         """Forward."""
         ret_dict = dict()
         if self.use_attention:
@@ -320,11 +319,6 @@ class Seq2AttnDecoder(nn.Module):
                 lengths[update_idx] = len(sequence_symbols)
             return symbols
 
-        # Prepare extra arguments for attention method
-        attention_method_kwargs = {}
-        if self.attention and isinstance(self.attention.method, HardGuidance):
-            attention_method_kwargs['provided_attention'] = provided_attention
-
         # When we use pre-rnn attention we must unroll the decoder. We need to calculate the
         # attention based on the previous hidden state, before we can calculate the next
         # hidden state.
@@ -340,6 +334,8 @@ class Seq2AttnDecoder(nn.Module):
         attn_keys = locals()[self.attn_keys]
         attn_vals = locals()[self.attn_vals]
 
+        kwargs = {}
+
         if unrolling:
             symbols = None
             for di in range(max_length):
@@ -353,10 +349,6 @@ class Seq2AttnDecoder(nn.Module):
                 else:
                     decoder_input = symbols
 
-                # Perform one forward step
-                if self.attention and isinstance(self.attention.method, HardGuidance):
-                    attention_method_kwargs['step'] = di
-
                 decoder_output, transcoder_hidden, decoder_hidden, step_attn = self.forward_step(
                     decoder_input,
                     transcoder_hidden,
@@ -364,7 +356,7 @@ class Seq2AttnDecoder(nn.Module):
                     attn_keys,
                     attn_vals,
                     function,
-                    **attention_method_kwargs)
+                    **kwargs)
 
                 # Remove the unnecessary dimension.
                 step_output = decoder_output.squeeze(1)
@@ -377,10 +369,6 @@ class Seq2AttnDecoder(nn.Module):
             # It still is run for shorter output targets in the batch
             decoder_input = inputs[:, :-1]
 
-            # Forward step without unrolling
-            if self.attention and isinstance(self.attention.method, HardGuidance):
-                attention_method_kwargs['step'] = -1
-
             decoder_output, transcoder_hidden, decoder_hidden, attn = self.forward_step(
                 decoder_input,
                 transcoder_hidden,
@@ -388,7 +376,7 @@ class Seq2AttnDecoder(nn.Module):
                 attn_keys,
                 attn_vals,
                 function,
-                **attention_method_kwargs)
+                **kwargs)
 
             for di in range(decoder_output.size(1)):
                 step_output = decoder_output[:, di, :]
