@@ -9,8 +9,6 @@ TEST4_PATH="${DATA_PATH}/new_compositions.tsv"
 TEST5_PATH="${DATA_PATH}/longer_compositions_incremental.tsv"
 TEST6_PATH="${DATA_PATH}/longer_compositions_new.tsv"
 TEST7_PATH="${DATA_PATH}/longer_compositions_seen.tsv"
-TEST8_PATH="${DATA_PATH}/heldout_tables_sn.tsv"
-TEST9_PATH="${DATA_PATH}/heldout_tables_ns.tsv"
 MONITOR_DATA="${VALIDATION_PATH} ${TEST1_PATH} ${TEST2_PATH} ${TEST3_PATH} ${TEST4_PATH} ${TEST5_PATH} ${TEST6_PATH} ${TEST7_PATH} ${TEST8_PATH} ${TEST9_PATH}"
 
 # TRAIN SETTINGS

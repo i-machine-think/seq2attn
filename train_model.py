@@ -12,10 +12,8 @@ from seq2attn.models import EncoderRNN
 from seq2attn.models import Seq2AttnDecoder
 from seq2attn.models import Seq2seq
 
-from machine.dataset import AttentionField
 from machine.dataset import SourceField
 from machine.dataset import TargetField
-from machine.loss import AttentionLoss
 from machine.loss import NLLLoss
 from machine.metrics import FinalTargetAccuracy
 from machine.metrics import SequenceAccuracy
@@ -51,10 +49,7 @@ parser.add_argument('--dropout_p_encoder', type=float, help='Dropout probability
 parser.add_argument('--dropout_p_decoder', type=float, help='Dropout probability for the decoder', default=0.2)
 parser.add_argument('--teacher_forcing_ratio', type=float, help='Teacher forcing ratio', default=0.2)
 parser.add_argument('--attention', choices=['pre-rnn'], default=False)
-parser.add_argument('--attention_method', choices=['dot', 'mlp', 'concat', 'hard'], default=None)
-parser.add_argument('--use_attention_loss', action='store_true')
-parser.add_argument('--scale_attention_loss', type=float, default=1.)
-parser.add_argument('--xent_loss', type=float, default=1.)
+parser.add_argument('--attention_method', choices=['dot', 'mlp', 'concat'], default=None)
 parser.add_argument('--metrics', nargs='+', default=['seq_acc'], choices=['word_acc', 'seq_acc', 'target_acc', 'sym_rwr_acc'], help='Metrics to use')
 parser.add_argument('--batch_size', type=int, help='Batch size', default=32)
 parser.add_argument('--eval_batch_size', type=int, help='Batch size', default=128)
@@ -88,17 +83,11 @@ logging.info(opt)
 if opt.resume and not opt.load_checkpoint:
     parser.error('load_checkpoint argument is required to resume training from checkpoint')
 
-if opt.use_attention_loss and not opt.attention:
-    parser.error('Specify attention type to use attention loss')
-
 if not opt.attention and opt.attention_method:
     parser.error("Attention method provided, but attention is not turned on")
 
 if opt.attention and not opt.attention_method:
     parser.error("Attention turned on, but no attention method provided")
-
-if opt.use_attention_loss and opt.attention_method == 'hard':
-    parser.error("Can't use attention loss in combination with non-differentiable hard attention method.")
 
 if torch.cuda.is_available():
         logging.info("Cuda device set to %i" % opt.cuda_device)
@@ -115,10 +104,6 @@ src = SourceField(lower=opt.lower)
 tgt = TargetField(include_eos=use_output_eos, lower=opt.lower)
 
 tabular_data_fields = [('src', src), ('tgt', tgt)]
-
-if opt.use_attention_loss or opt.attention_method == 'hard':
-    attn = AttentionField(use_vocab=False, ignore_index=IGNORE_INDEX)
-    tabular_data_fields.append(('attn', attn))
 
 max_len = opt.max_len
 
@@ -150,34 +135,6 @@ for dataset in opt.monitor:
         fields=tabular_data_fields,
         filter_pred=len_filter)
     monitor_data[dataset] = m
-
-# When chosen to use attentive guidance, check whether the data is correct for the first
-# example in the data set. We can assume that the other examples are then also correct.
-if opt.use_attention_loss or opt.attention_method == 'hard':
-    if len(train) > 0:
-        if 'attn' not in vars(train[0]):
-            raise Exception("AttentionField not found in train data")
-        tgt_len = len(vars(train[0])['tgt']) - 1 # -1 for SOS
-        attn_len = len(vars(train[0])['attn']) - 1 # -1 for preprended ignore_index
-        if attn_len != tgt_len:
-            raise Exception("Length of output sequence does not equal length of attention sequence in train data")
-
-    if dev is not None and len(dev) > 0:
-        if 'attn' not in vars(dev[0]):
-            raise Exception("AttentionField not found in dev data")
-        tgt_len = len(vars(dev[0])['tgt']) - 1 # -1 for SOS
-        attn_len = len(vars(dev[0])['attn']) - 1 # -1 for preprended ignore_index
-        if attn_len != tgt_len:
-            raise Exception("Length of output sequence does not equal length of attention sequence in dev data.")
-
-    for m in monitor_data.values():
-        if len(m) > 0:
-            if 'attn' not in vars(m[0]):
-                raise Exception("AttentionField not found in monitor data")
-            tgt_len = len(vars(m[0])['tgt']) - 1 # -1 for SOS
-            attn_len = len(vars(m[0])['attn']) - 1 # -1 for preprended ignore_index
-            if attn_len != tgt_len:
-                raise Exception("Length of output sequence does not equal length of attention sequence in monitor data.")
 
 #################################################################################
 # prepare model
@@ -250,12 +207,7 @@ output_vocabulary = output_vocab.itos
 # Prepare loss and metrics
 pad = output_vocab.stoi[tgt.pad_token]
 losses = [NLLLoss(ignore_index=pad)]
-# loss_weights = [1.]
-loss_weights = [float(opt.xent_loss)]
-
-if opt.use_attention_loss:
-    losses.append(AttentionLoss(ignore_index=IGNORE_INDEX))
-    loss_weights.append(opt.scale_attention_loss)
+loss_weights = [1.]
 
 for loss in losses:
     loss.to(device)
