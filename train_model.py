@@ -236,13 +236,6 @@ checkpoint_path = os.path.join(opt.output_dir, opt.load_checkpoint) if opt.resum
 # create trainer
 t = SupervisedTrainer(expt_dir=opt.output_dir)
 
-t.set_local_parameters(losses=losses,
-                       metrics=metrics,
-                       loss_weights=loss_weights,
-                       checkpoint_every=opt.save_every,
-                       print_every=opt.print_every,
-                       random_seed=None)
-
 seq2seq, logs = t.train(model=seq2seq,
                         data=train,
                         dev_data=dev,
@@ -252,7 +245,13 @@ seq2seq, logs = t.train(model=seq2seq,
                         teacher_forcing_ratio=opt.teacher_forcing_ratio,
                         learning_rate=opt.lr,
                         resume_training=opt.resume,
-                        checkpoint_path=checkpoint_path)
+                        checkpoint_path=checkpoint_path,
+                        losses=losses,
+                        metrics=metrics,
+                        loss_weights=loss_weights,
+                        checkpoint_every=opt.save_every,
+                        print_every=opt.print_every,
+                        random_seed=None)
 
 if opt.write_logs:
     output_path = os.path.join(opt.output_dir, opt.write_logs)

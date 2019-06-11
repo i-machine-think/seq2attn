@@ -10,6 +10,7 @@ from machine.metrics import WordAccuracy, SequenceAccuracy, FinalTargetAccuracy
 from machine.dataset import SourceField, TargetField, get_standard_iter
 from machine.evaluator import Evaluator
 from machine.trainer import SupervisedTrainer
+from machine.util.callbacks import Callback
 from machine.util.checkpoint import Checkpoint
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -115,6 +116,6 @@ data_func = SupervisedTrainer.get_batch_data
 evaluator = Evaluator(loss=losses, metrics=metrics)
 losses, metrics = evaluator.evaluate(model=seq2seq, data_iterator=test, get_batch_data=data_func)
 
-total_loss, log_msg, _ = SupervisedTrainer.get_losses(losses, metrics, 0)
+total_loss, log_msg, _ = Callback.get_losses(losses, metrics, 0)
 
 logging.info(log_msg)
