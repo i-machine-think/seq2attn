@@ -12,7 +12,7 @@ from seq2attn.models import EncoderRNN
 from seq2attn.models import Seq2AttnDecoder
 from seq2attn.models import Seq2seq
 
-from machine.dataset import SourceField
+from machine.dataset import SourceField, get_standard_iter
 from machine.dataset import TargetField
 from machine.loss import NLLLoss
 from machine.metrics import FinalTargetAccuracy
@@ -117,6 +117,7 @@ train = torchtext.data.TabularDataset(
     fields=tabular_data_fields,
     filter_pred=len_filter
 )
+train = get_standard_iter(train, batch_size=opt.batch_size)
 
 if opt.dev:
     dev = torchtext.data.TabularDataset(
@@ -124,6 +125,7 @@ if opt.dev:
         fields=tabular_data_fields,
         filter_pred=len_filter
     )
+    dev = get_standard_iter(dev, batch_size=opt.eval_batch_size)
 
 else:
     dev = None
@@ -134,6 +136,7 @@ for dataset in opt.monitor:
         path=dataset, format='tsv',
         fields=tabular_data_fields,
         filter_pred=len_filter)
+    m = get_standard_iter(m, batch_size=opt.eval_batch_size)
     monitor_data[dataset] = m
 
 #################################################################################
@@ -155,8 +158,8 @@ if opt.load_checkpoint is not None:
 
 else:
     # build vocabulary
-    src.build_vocab(train, max_size=opt.src_vocab)
-    tgt.build_vocab(train, max_size=opt.tgt_vocab)
+    src.build_vocab(train.dataset, max_size=opt.src_vocab)
+    tgt.build_vocab(train.dataset, max_size=opt.tgt_vocab)
     input_vocab = src.vocab
     output_vocab = tgt.vocab
 
@@ -231,14 +234,14 @@ if 'sym_rwr_acc' in opt.metrics:
 checkpoint_path = os.path.join(opt.output_dir, opt.load_checkpoint) if opt.resume else None
 
 # create trainer
-t = SupervisedTrainer(loss=losses,
-                      metrics=metrics,
-                      loss_weights=loss_weights,
-                      batch_size=opt.batch_size,
-                      eval_batch_size=opt.eval_batch_size,
-                      checkpoint_every=opt.save_every,
-                      print_every=opt.print_every,
-                      expt_dir=opt.output_dir)
+t = SupervisedTrainer(expt_dir=opt.output_dir)
+
+t.set_local_parameters(losses=losses,
+                       metrics=metrics,
+                       loss_weights=loss_weights,
+                       checkpoint_every=opt.save_every,
+                       print_every=opt.print_every,
+                       random_seed=None)
 
 seq2seq, logs = t.train(model=seq2seq,
                         data=train,
@@ -248,7 +251,7 @@ seq2seq, logs = t.train(model=seq2seq,
                         optimizer=opt.optim,
                         teacher_forcing_ratio=opt.teacher_forcing_ratio,
                         learning_rate=opt.lr,
-                        resume=opt.resume,
+                        resume_training=opt.resume,
                         checkpoint_path=checkpoint_path)
 
 if opt.write_logs:

@@ -7,7 +7,7 @@ import torchtext
 
 from machine.loss import NLLLoss
 from machine.metrics import WordAccuracy, SequenceAccuracy, FinalTargetAccuracy
-from machine.dataset import SourceField, TargetField
+from machine.dataset import SourceField, TargetField, get_standard_iter
 from machine.evaluator import Evaluator
 from machine.trainer import SupervisedTrainer
 from machine.util.checkpoint import Checkpoint
@@ -84,6 +84,7 @@ test = torchtext.data.TabularDataset(
     fields=tabular_data_fields,
     filter_pred=len_filter
 )
+test = get_standard_iter(test, batch_size=opt.batch_size)
 
 # Prepare loss and metrics
 pad = output_vocab.stoi[tgt.pad_token]
@@ -111,8 +112,8 @@ data_func = SupervisedTrainer.get_batch_data
 #################################################################################
 # Evaluate model on test set
 
-evaluator = Evaluator(batch_size=opt.batch_size, loss=losses, metrics=metrics)
-losses, metrics = evaluator.evaluate(model=seq2seq, data=test, get_batch_data=data_func)
+evaluator = Evaluator(loss=losses, metrics=metrics)
+losses, metrics = evaluator.evaluate(model=seq2seq, data_iterator=test, get_batch_data=data_func)
 
 total_loss, log_msg, _ = SupervisedTrainer.get_losses(losses, metrics, 0)
 
