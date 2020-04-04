@@ -23,6 +23,8 @@ setup(
     ],
     keywords='seq2seq py-torch development',
     packages=find_packages(),
-    install_requires=['matplotlib'],
-    python_requires='>3.6'
+    install_requires=[
+        'matplotlib',
+    ],
+    python_requires='>3.6',
 )
