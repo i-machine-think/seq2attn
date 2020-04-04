@@ -18,7 +18,7 @@ git clone https://github.com/i-machine-think/machine-tasks
 Install `machine` and `seq2attn`
 ```
 pip install --user -e machine
-pip install --user -e machine
+pip install --user -e seq2attn
 ```
 
 Run example script
